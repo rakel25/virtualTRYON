@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Virtual Try-On</title>
   <style>
-    body, html {
-      margin: 0; padding: 0; overflow: hidden;
+    html, body {
+      margin: 0; padding: 0; height: 100%; width: 100%;
       font-family: Helvetica, sans-serif;
       background: #fff;
+      overflow: hidden;
     }
 
     #splash-screen {
@@ -16,12 +17,14 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+      width: 100vw;
       cursor: pointer;
     }
 
     #splash-screen img {
-      max-width: 80vw;
-      max-height: 80vh;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
     }
 
     #fitting-room {
@@ -34,16 +37,20 @@
     }
 
     #video-container {
-      flex: 1 0 60%; /* 60% altura para video */
+      flex: 1 0 60%;
       position: relative;
       background: #000;
+      overflow: hidden;
     }
 
-    #video, #video-canvas {
+    /* Video con espejo */
+    #video {
       position: absolute;
       top: 0; left: 0;
-      width: 100%; height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
+      transform: scaleX(-1); /* espejo */
     }
 
     #overlay-canvas {
@@ -51,16 +58,18 @@
       top: 0; left: 0;
       width: 100%; height: 100%;
       pointer-events: none;
+      /* Si quieres que también esté invertido: */
+      transform: scaleX(-1);
     }
 
     #clothes-container {
-      flex: 1 0 40%; /* 40% altura para prendas */
+      flex: 1 0 40%;
       display: flex;
       align-items: center;
       justify-content: center;
       background: #f0f0f0;
       position: relative;
-      padding: 0 60px; /* espacio para flechas */
+      padding: 0 60px;
     }
 
     #prev-btn, #next-btn {
@@ -102,12 +111,10 @@
 </head>
 <body>
 
-  <!-- PANTALLA INICIAL -->
   <div id="splash-screen">
     <img src="logo.png" alt="Virtual TRY-ON Logo" id="logo" />
   </div>
 
-  <!-- PROBADOR VIRTUAL -->
   <div id="fitting-room">
     <div id="video-container">
       <video id="video" autoplay muted playsinline></video>
@@ -190,6 +197,7 @@
         },
         width: 640,
         height: 480,
+        facingMode: "user"
       });
 
       cameraInstance = camera;
@@ -205,23 +213,12 @@
 
       if (!results.poseLandmarks) return;
 
-      const ls = results.poseLandmarks[11];
-      const rs = results.poseLandmarks[12];
-      const lh = results.poseLandmarks[23];
-      const rh = results.poseLandmarks[24];
-
-      const centerX = ((ls.x + rs.x) / 2) * overlayCanvas.width;
-      const shoulderWidth = Math.abs(ls.x - rs.x) * overlayCanvas.width;
-      const torsoHeight = Math.abs(((lh.y + rh.y) / 2 - (ls.y + rs.y) / 2)) * overlayCanvas.height;
-
-      // Aquí no dibujamos la prenda en el canvas, la prenda está en el div inferior
-
-      // Pero podrías añadir elementos visuales si quieres.
+      // Aquí puedes dibujar puntos o líneas sobre la pose si quieres
     }
 
-    // Inicializamos la prenda que se muestra en la parte inferior
+    // Inicializamos prenda
     updatePrenda();
-  </script>
 
+  </script>
 </body>
 </html>
