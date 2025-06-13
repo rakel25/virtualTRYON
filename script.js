@@ -1,35 +1,67 @@
-const videoElement = document.getElementById('video');
-const canvasElement = document.getElementById('canvas');
-const canvasCtx = canvasElement.getContext('2d');
+const splash = document.getElementById("splash-screen");
+const enterBtn = document.getElementById("enter-btn");
+const fittingRoom = document.getElementById("fitting-room");
 
-const camisetas = [
-  new Image(),
-  new Image(),
-  new Image(),
-  new Image()
+const video = document.getElementById("video");
+const videoCanvas = document.getElementById("video-canvas");
+const overlayCanvas = document.getElementById("overlay-canvas");
+const videoCtx = videoCanvas.getContext("2d");
+const overlayCtx = overlayCanvas.getContext("2d");
+
+const clothingName = document.getElementById("clothing-name");
+
+const prendas = [
+  { name: "Jacket 1", file: "jacket1.png" },
+  { name: "Moria 1", file: "moria1.png" },
+  { name: "Nusa 1", file: "nusa1.png" },
+  { name: "Peixe 1", file: "peixe1.png" }
 ];
 
-const nombres = ['azul.png', 'morada.png', 'naranja.png', 'verde.png'];
-let cargadas = 0;
+let currentIndex = 0;
+let currentStream = null;
+let cameraInstance = null;
 
-nombres.forEach((nombre, index) => {
-  camisetas[index].src = `camisetas/${nombre}`;
-  camisetas[index].onload = () => {
-    cargadas++;
-    if (cargadas === camisetas.length) {
-      iniciarCamara();
-    }
-  };
-});
+// Ya no usamos toggleCameraBtn ni changing cameras, solo frontal
+// let usingFrontCamera = true; // no necesario
 
-let camisetaActual = 0;
-function cambiarCamiseta(index) {
-  camisetaActual = index;
+function updatePrenda() {
+  const item = prendas[currentIndex];
+  clothingName.textContent = item.name;
+  clothingImg.src = `clothes/${item.file}`;
 }
 
-function iniciarCamara() {
+const clothingImg = new Image();
+clothingImg.src = `clothes/${prendas[0].file}`;
+
+// Navegación prendas
+document.getElementById("prev-btn").onclick = () => {
+  currentIndex = (currentIndex - 1 + prendas.length) % prendas.length;
+  updatePrenda();
+};
+
+document.getElementById("next-btn").onclick = () => {
+  currentIndex = (currentIndex + 1) % prendas.length;
+  updatePrenda();
+};
+
+enterBtn.onclick = () => {
+  splash.style.display = "none";
+  fittingRoom.style.display = "block";
+  startPose();
+};
+
+function resizeCanvases() {
+  videoCanvas.width = window.innerWidth;
+  videoCanvas.height = window.innerHeight;
+  overlayCanvas.width = window.innerWidth;
+  overlayCanvas.height = window.innerHeight;
+}
+resizeCanvases();
+window.addEventListener('resize', resizeCanvases);
+
+function startPose() {
   const pose = new Pose({
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+    locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
   });
 
   pose.setOptions({
@@ -42,38 +74,59 @@ function iniciarCamara() {
 
   pose.onResults(onResults);
 
-  const camera = new Camera(videoElement, {
+  // Solo cámara frontal
+  const constraints = {
+    audio: false,
+    video: {
+      width: 640,
+      height: 480,
+      facingMode: "user"
+    }
+  };
+
+  const camera = new Camera(video, {
     onFrame: async () => {
-      await pose.send({ image: videoElement });
+      await pose.send({ image: video });
     },
     width: 640,
-    height: 480
+    height: 480,
+    facingMode: "user"
   });
 
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+  }
+  currentStream = camera;
+  cameraInstance = camera;
   camera.start();
 }
 
 function onResults(results) {
-  canvasElement.width = videoElement.videoWidth;
-  canvasElement.height = videoElement.videoHeight;
+  videoCtx.clearRect(0, 0, videoCanvas.width, videoCanvas.height);
+  videoCtx.drawImage(results.image, 0, 0, videoCanvas.width, videoCanvas.height);
 
-  canvasCtx.save();
-  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-  canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+  overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-  if (results.poseLandmarks) {
-    const leftShoulder = results.poseLandmarks[11];
-    const rightShoulder = results.poseLandmarks[12];
+  if (!results.poseLandmarks) return;
 
-    if (leftShoulder && rightShoulder) {
-      const x = leftShoulder.x * canvasElement.width;
-      const y = leftShoulder.y * canvasElement.height;
-      const width = (rightShoulder.x - leftShoulder.x) * canvasElement.width;
-      const height = width * 1.2;
+  const ls = results.poseLandmarks[11]; // hombro izq
+  const rs = results.poseLandmarks[12]; // hombro der
+  const lh = results.poseLandmarks[23]; // cadera izq
+  const rh = results.poseLandmarks[24]; // cadera der
 
-      canvasCtx.drawImage(camisetas[camisetaActual], x, y, width, height);
-    }
-  }
+  const centerX = (ls.x + rs.x) / 2 * overlayCanvas.width;
+  const shoulderWidth = Math.abs(ls.x - rs.x) * overlayCanvas.width;
+  const torsoHeight = Math.abs(((lh.y + rh.y) / 2 - (ls.y + rs.y) / 2)) * overlayCanvas.height;
 
-  canvasCtx.restore();
+  const imgWidth = shoulderWidth * 1.8;
+  const imgHeight = torsoHeight * 2;
+
+  // Dibujar la prenda justo debajo del cuello
+  const drawX = centerX - imgWidth / 2;
+  const drawY = ((ls.y + rs.y) / 2) * overlayCanvas.height + 20; // un poco debajo del cuello
+
+  overlayCtx.drawImage(clothingImg, drawX, drawY, imgWidth, imgHeight);
 }
+
+// Inicializa prenda y nombre
+updatePrenda();
