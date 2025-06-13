@@ -27,11 +27,11 @@ let cameraInstance = null;
 function updatePrenda() {
   const item = prendas[currentIndex];
   clothingName.textContent = item.name;
-  clothingImg.src = `clothes/${item.file}`;
+  clothingImg.src = `/${item.file}`;
 }
 
 const clothingImg = new Image();
-clothingImg.src = `clothes/${prendas[0].file}`;
+clothingImg.src = `/${prendas[0].file}`;
 
 // Navegación prendas
 document.getElementById("prev-btn").onclick = () => {
